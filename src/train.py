@@ -9,6 +9,8 @@ from src.eval.eval_model import dev_eval
 from src.adapet import adapet
 from torch.optim.lr_scheduler import LambdaLR
 
+import torch_optimizer as topt
+
 from src.data.Batcher import Batcher
 from src.utils.Config import Config
 from src.utils.util import get_avg_dict_val_store, update_dict_val_store, ParseKwargs
@@ -72,6 +74,7 @@ def train(config):
          'lr': config.lr},
     ]
     optimizer = torch.optim.AdamW(optimizer_grouped_parameters, eps=1e-8)
+    # optimizer = topt.Ranger(optimizer_grouped_parameters, lr=2e-3)
 
     best_dev_acc = 0
     train_iter = batcher.get_train_batch()
