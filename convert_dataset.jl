@@ -10,10 +10,14 @@ begin
 	using CSV
 	using MLDataPattern
 	using DataFrames
+	using Random
 end
 
 # ╔═╡ 8f8414aa-094b-11eb-31dc-cfa0cd975387
 filename = "hotels_topic.json"
+
+# ╔═╡ 624afcd1-0593-4feb-891b-dc132c311269
+samples_per_aspect = 3
 
 # ╔═╡ bb8ec66e-094b-11eb-3fc3-73cea20f3440
 js = JSON.parse(read(filename, String))
@@ -35,12 +39,6 @@ end
 # ╔═╡ 9b38fffc-094d-11eb-2e7d-4971410e0dca
 clean_sentences = [ replace(sent, "\n" => "")|>strip for sent in sentences]
 
-# ╔═╡ 2d3769ac-b488-4e79-aa18-687fa3241bbe
-println(sort(Dict(zip(sort(unique(aspects)), sort(unique(aspects))))))
-
-# ╔═╡ 139acb67-1925-49d1-82c6-98d9d3021361
-println(sort(unique(aspects)))
-
 # ╔═╡ 118721c2-094c-11eb-329e-675eca96ff3f
 asp2num = numdict(aspects)
 
@@ -59,8 +57,25 @@ begin
 	res
 end
 
+# ╔═╡ 569bb24f-4195-411b-a245-2af32b0cecc5
+# Select a fixed number of samples of each aspect for the training set
+begin
+	train_res = []
+	rest_res = []
+	asp_count = Dict(asp => 0 for asp in values(asp2asp))
+	for r in res
+		if asp_count[r["label"]] < samples_per_aspect
+			push!(train_res, r)
+			asp_count[r["label"]] += 1
+		else
+			push!(rest_res, r)
+		end
+	end
+	train_res
+end
+
 # ╔═╡ 8079039b-6474-4ec1-b783-3d713228b864
-train_res, dev_res, test_res = splitobs(shuffleobs(res), at=(0.01, 0.29), )
+dev_res, test_res = splitobs(shuffleobs(rest_res, rng=MersenneTwister(42)), at=0.05)
 
 # ╔═╡ 2e1dc168-4331-4720-b6df-fa25650bb770
 begin
@@ -71,7 +86,7 @@ begin
 	end
 	
 	open("./data/DO/dev.jsonl", "w") do IO
-		for r in dev_res
+		for r in dev_res[1:200]
 			println(IO, json(r))
 		end
 	end
@@ -81,13 +96,8 @@ begin
 			println(IO, json(r))
 		end
 	end
+  println("Conversion finished")
 end
-
-# ╔═╡ 92e3e9dc-094d-11eb-27cd-754230331b4b
-(train_sentences, train_aspects, train_sentiments), (test_sentences, test_aspects, test_sentiments) = splitobs(shuffleobs((clean_sentences, aspects, sentiments)), at=0.5)
-
-# ╔═╡ 0865c68c-094e-11eb-14b2-bd900bc14143
-CSV.write("test.csv", gen_dataset(test_sentences, test_aspects, 50), writeheader=false, quotestrings=true)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -96,6 +106,7 @@ CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 MLDataPattern = "9920b226-0b2a-5f5f-9153-9aa70a013f8b"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [compat]
 CSV = "~0.8.5"
@@ -409,20 +420,18 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╔═╡ Cell order:
 # ╠═782db310-094b-11eb-2b60-35e8eaa6fe84
 # ╠═8f8414aa-094b-11eb-31dc-cfa0cd975387
+# ╠═624afcd1-0593-4feb-891b-dc132c311269
 # ╠═bb8ec66e-094b-11eb-3fc3-73cea20f3440
 # ╠═c8753c12-094b-11eb-284c-a3d4a00e1dff
 # ╠═9b38fffc-094d-11eb-2e7d-4971410e0dca
 # ╠═329536a6-094c-11eb-0254-77af9f905a56
-# ╠═2d3769ac-b488-4e79-aa18-687fa3241bbe
-# ╠═139acb67-1925-49d1-82c6-98d9d3021361
 # ╠═118721c2-094c-11eb-329e-675eca96ff3f
 # ╠═6d08b2e4-094d-11eb-2b90-d93886768231
 # ╠═59eed0f0-0c8e-11eb-1a7b-65ef55d86037
 # ╠═74f0d281-0e00-4414-82fe-ba1a2c48c1d3
 # ╠═7b01e631-d521-4f0f-9726-c297c26e9b9e
+# ╠═569bb24f-4195-411b-a245-2af32b0cecc5
 # ╠═8079039b-6474-4ec1-b783-3d713228b864
 # ╠═2e1dc168-4331-4720-b6df-fa25650bb770
-# ╠═92e3e9dc-094d-11eb-27cd-754230331b4b
-# ╠═0865c68c-094e-11eb-14b2-bd900bc14143
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
