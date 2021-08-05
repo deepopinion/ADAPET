@@ -60,6 +60,10 @@ class Scorer(object):
             self.compute_acc = True
             self.compute_f1 = True
             self.is_do = True
+        elif dataset.lower() == "dosentencepairs":
+            self.compute_acc = True
+            self.compute_f1 = True
+            self.is_do = True
         else:
             raise ValueError("Invalid Dataset name")
 

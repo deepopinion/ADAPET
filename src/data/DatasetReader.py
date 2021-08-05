@@ -10,6 +10,7 @@ from src.data.COPAReader import COPAReader
 from src.data.RecordReader import RecordReader
 from src.data.WSCReader import WSCReader
 from src.data.DOReader import DOReader
+from src.data.DOSentencePairReader import DOSentencePairReader
 
 class DatasetReader(object):
     '''
@@ -42,6 +43,8 @@ class DatasetReader(object):
             self.dataset_reader = WSCReader(self.config, tokenizer)
         elif self.dataset.lower() == "do":
             self.dataset_reader = DOReader(self.config, tokenizer)
+        elif self.dataset.lower() == "dosentencepairs":
+            self.dataset_reader = DOSentencePairReader(self.config, tokenizer)
         else:
             raise ValueError("Invalid Dataset name")
 
