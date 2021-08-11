@@ -2,6 +2,10 @@ import os
 import json
 import torch
 
+import numpy as np
+
+from tqdm.auto import tqdm
+
 from src.eval.Scorer import Scorer
 from src.eval.Writer import Writer
 
@@ -90,11 +94,14 @@ def test_eval(config, model, batcher):
     dataset_reader = batcher.get_dataset_reader()
     test_writer = Writer(os.path.join(config.exp_dir, "test.json"), dataset_reader)
 
+    all_logits = []
+
     with torch.no_grad():
-        for idx, batch in enumerate(batcher.get_test_batch()):
+        for idx, batch in enumerate(tqdm(batcher.get_test_batch())):
             pred_lbl, lbl_logits = model.predict(batch)
             list_idx = batch["input"]["idx"] if isinstance(batch["input"]["idx"], list) else batch["input"][
                 "idx"].cpu().numpy().tolist()
+            all_logits.append(lbl_logits.cpu().numpy())
             list_lbl = batch["output"]["true_lbl"] if "true_lbl" in batch["output"] else batch["output"]["lbl"]
 
             if config.dataset.lower() == 'fewglue/record':
@@ -103,5 +110,6 @@ def test_eval(config, model, batcher):
                 test_writer.add_batch(list_idx, pred_lbl, list_lbl, lbl_logits.cpu().numpy())
             else:
                 test_writer.add_batch(list_idx, pred_lbl, list_lbl, lbl_logits.cpu().numpy())
-
+        with open(os.path.join(config.exp_dir, "test_logits.npy"), 'wb') as f:
+                np.save(f, np.vstack(all_logits))
     test_writer.flush_file()
