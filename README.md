@@ -82,3 +82,12 @@ Please cite us if ADAPET is useful in your work:
           year={2021}
 }
 ```
+
+## Internal ##
+```
+source env/bin/activate.fish
+export PET_ELECTRA_ROOT=(pwd)
+python -m pdb -c continue -m src.train -c config/DO.json
+python -m src.test -e exp_out/dosentencepairs/albert-base-v2/2021-08-10-13-34-34/
+```
+Results are then in `exp_out/dosentencepairs/albert-base-v2/2021-08-10-13-34-34/test.json`
