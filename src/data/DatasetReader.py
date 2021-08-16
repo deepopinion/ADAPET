@@ -43,7 +43,7 @@ class DatasetReader(object):
             self.dataset_reader = WSCReader(self.config, tokenizer)
         elif self.dataset.lower() == "do":
             self.dataset_reader = DOReader(self.config, tokenizer)
-        elif self.dataset.lower() == "dosentencepairs":
+        elif "dosentencepairs" in self.dataset.lower():
             self.dataset_reader = DOSentencePairReader(self.config, tokenizer)
         else:
             raise ValueError("Invalid Dataset name")

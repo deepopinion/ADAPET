@@ -44,12 +44,13 @@ class DOSentencePairReader(object):
         :param split:
         :return:
         '''
+        basedir = self.config.dataset
         if split.lower() == "train":
-            file = os.path.join("data", "DOSentencePairs", "train.jsonl")
+            file = os.path.join("data", basedir, "train.jsonl")
         elif split.lower() == "dev":
-            file = os.path.join("data", "DOSentencePairs", "dev.jsonl")
+            file = os.path.join("data", basedir, "dev.jsonl")
         elif split.lower() == "test":
-            file = os.path.join("data", "DOSentencePairs", "test.jsonl")
+            file = os.path.join("data", basedir, "test.jsonl")
         return file
 
     def read_dataset(self, split=None, is_eval=False):
@@ -120,7 +121,7 @@ class DOSentencePairReader(object):
             list_mask_idx[b_idx,:self.get_num_lbl_tok()] = range(mask_idx, mask_idx+self.get_num_lbl_tok())
 
         return torch.tensor(list_input_ids).to(device), torch.tensor(list_mask_idx).to(device), label
-    
+
 
     def prepare_pet_mlm_batch(self, batch, mode="PET1"):
         '''

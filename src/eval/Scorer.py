@@ -60,7 +60,7 @@ class Scorer(object):
             self.compute_acc = True
             self.compute_f1 = True
             self.is_do = True
-        elif dataset.lower() == "dosentencepairs":
+        elif "dosentencepairs" in dataset.lower():
             self.compute_acc = True
             self.compute_f1 = True
             self.is_do = True
