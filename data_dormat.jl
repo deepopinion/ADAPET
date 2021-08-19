@@ -41,9 +41,7 @@ begin
 end
 
 # ╔═╡ e7f8f05e-17c0-44a9-b8ca-263e3b729884
-begin
-	jsconf = JSON.parse(read(joinpath(configdir, dataset)*".json", String))
-end
+jsconf = JSON.parse(read(joinpath(configdir, dataset)*".json", String))
 
 # ╔═╡ c217c7ba-911e-4791-96e1-0b202b84f76c
 

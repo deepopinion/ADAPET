@@ -112,6 +112,7 @@ def train(config):
             dev_acc, dev_logits = dev_eval(config, model, batcher, batch_idx, dict_avg_val)
 
             print("Global Step: %d Acc: %.3f" % (batch_idx, dev_acc) + '\n')
+            print("accuracy:", dev_acc)
             if dev_acc > best_dev_acc:
                 best_dev_acc = dev_acc
                 torch.save(model.state_dict(), os.path.join(config.exp_dir, "best_model.pt"))

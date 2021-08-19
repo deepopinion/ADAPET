@@ -114,11 +114,39 @@ function write_data(filename, data, nb_neg_samples)
 	end
 end
 
+# ╔═╡ ae6ff8e5-788a-4787-9e1b-a879b24f1e55
+function write_all_data(filename, data)
+	allaspects = values(asp2asp)
+	data_to_write = []
+	
+	idx = 1
+	for r in data
+		for aspect in allaspects
+			d = Dict(
+				"idx" => idx,
+				"hypothesis" => r["sentence"],
+				"premise" => aspect,
+				"label" => aspect == r["label"] ? "Yes" : "No")
+			push!(data_to_write, d)
+			idx+=1
+		end
+	end
+	
+	open(filename, "w") do IO
+		for d in data_to_write
+			println(IO, json(d))
+		end
+	end
+end
+
+# ╔═╡ 0314dab9-9c92-4d51-9838-a0d7668c1bf6
+(test_res|>length)*25
+
 # ╔═╡ 2e1dc168-4331-4720-b6df-fa25650bb770
 begin
 	write_data("./data/DOSentencePairs/train.jsonl", train_res, nb_neg_samples)
 	write_data("./data/DOSentencePairs/dev.jsonl", dev_res, 0)
-	write_data("./data/DOSentencePairs/test.jsonl", test_res, 0)
+	write_all_data("./data/DOSentencePairs/test.jsonl", test_res)
   	println("Conversion finished")
 end
 
@@ -457,6 +485,8 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╠═569bb24f-4195-411b-a245-2af32b0cecc5
 # ╠═8079039b-6474-4ec1-b783-3d713228b864
 # ╠═627d5767-4c18-436a-8a47-f97cc94d7fa7
+# ╠═ae6ff8e5-788a-4787-9e1b-a879b24f1e55
+# ╠═0314dab9-9c92-4d51-9838-a0d7668c1bf6
 # ╠═2e1dc168-4331-4720-b6df-fa25650bb770
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

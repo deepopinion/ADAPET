@@ -11,6 +11,7 @@ begin
 	using MLDataPattern
 	using DataFrames
 	using Random
+	using PlutoUI
 end
 
 # ╔═╡ 8f8414aa-094b-11eb-31dc-cfa0cd975387
@@ -99,6 +100,22 @@ begin
   println("Conversion finished")
 end
 
+# ╔═╡ b9150824-1729-4fe2-bf33-5434826572c8
+begin
+	tres = []
+	for t in train_res[1:70]
+		push!(tres, t["sentence"]*": "* t["label"])
+	end
+	open("/home/paethon/tmp/prompts.txt", "w") do io
+		for t in tres
+			println(io, t)
+		end
+	end
+end
+
+# ╔═╡ f88f994d-0778-439f-87a3-220b92c38104
+
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
@@ -106,6 +123,7 @@ CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 MLDataPattern = "9920b226-0b2a-5f5f-9153-9aa70a013f8b"
+PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [compat]
@@ -113,6 +131,7 @@ CSV = "~0.8.5"
 DataFrames = "~1.2.1"
 JSON = "~0.21.1"
 MLDataPattern = "~0.5.4"
+PlutoUI = "~0.7.9"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -300,6 +319,12 @@ version = "1.1.0"
 deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
+[[PlutoUI]]
+deps = ["Base64", "Dates", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "Suppressor"]
+git-tree-sha1 = "44e225d5837e2a2345e69a1d1e01ac2443ff9fcb"
+uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+version = "0.7.9"
+
 [[PooledArrays]]
 deps = ["DataAPI", "Future"]
 git-tree-sha1 = "cde4ce9d6f33219465b55162811d8de8139c0414"
@@ -373,6 +398,11 @@ git-tree-sha1 = "2f6792d523d7448bbe2fec99eca9218f06cc746d"
 uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 version = "0.33.8"
 
+[[Suppressor]]
+git-tree-sha1 = "a819d77f31f83e5792a76081eee1ea6342ab8787"
+uuid = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
+version = "0.2.0"
+
 [[TOML]]
 deps = ["Dates"]
 uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
@@ -433,5 +463,7 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╠═569bb24f-4195-411b-a245-2af32b0cecc5
 # ╠═8079039b-6474-4ec1-b783-3d713228b864
 # ╠═2e1dc168-4331-4720-b6df-fa25650bb770
+# ╠═b9150824-1729-4fe2-bf33-5434826572c8
+# ╠═f88f994d-0778-439f-87a3-220b92c38104
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
