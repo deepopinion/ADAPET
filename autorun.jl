@@ -36,7 +36,8 @@ end
 
 # ╔═╡ 79098e1e-5917-484c-9324-757548f1f699
 function set_run_options(filename, outfilename;
-		         pattern=1, dataset="dosentencepairs", pretrained_weight="albert-base-v2")
+                         pattern=1, dataset="dosentencepairs",
+                         pretrained_weight="albert-base-v2")
   js = JSON.parse(read(filename, String))
   js["pattern"] = pattern
   js["dataset"] = dataset
@@ -197,7 +198,8 @@ function run_experiment(;pattern=1, samples_per_aspect=3, nb_neg_samples=3,
   # Generate config
   println("Setting run options")
   set_run_options("./config/dosentencepairs_template.json", configfilename;
-		  pattern=pattern, dataset=datasetname)
+		  pattern=pattern, dataset=datasetname,
+                  pretrained_weight=pretrained_weight)
   # Run training
   println("Starting training")
   run(`python -m src.train -c $configfilename`)

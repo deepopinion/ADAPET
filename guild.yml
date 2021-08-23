@@ -2,7 +2,7 @@ sentencepair:
   description: Executes a set of experiments with ADAPET and sentencepair data
   exec: julia ./autorun.jl ${flag_args}
   flags:
-    pattern: 1
+    pattern: [1, 2, 3, 4]
     samples_per_aspect: [1,2,3,4,5,7,10,15]
     nb_neg_samples: 3
     pretrained_weight: albert-xxlarge-v2
@@ -10,4 +10,4 @@ sentencepair:
     select: "*"
     dest: .
   output-scalars:
-    loss: 'accuracy: (\value)'
+    accuracy: 'accuracy: (\value)'
