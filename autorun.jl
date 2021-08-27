@@ -30,6 +30,9 @@ begin
     "--pretrained_weight"
     arg_type = String
     default = "albert-base-v2"
+    "--seed"
+    arg_type = Int
+    default = 42
   end
   args = parse_args(ARGS, s)
 end
@@ -112,7 +115,7 @@ function write_all_data(filename, data)
 end
 
 # ╔═╡ 354d0e38-ebf3-4069-921e-90588ff8e78e
-function generate_dataset(infilename, outdir;samples_per_aspect=3, nb_neg_samples=3)
+function generate_dataset(infilename, outdir;samples_per_aspect=3, nb_neg_samples=3, seed=42)
   js = JSON.parse(read(infilename, String))
   sentences, aspects, sentiments = js["sentences"], js["aspects"], js["sentiments"]
   aspects = [asp2asp[a] for a in aspects]
@@ -138,7 +141,7 @@ function generate_dataset(infilename, outdir;samples_per_aspect=3, nb_neg_sample
     end
   end
   # Split off dev and test set
-  dev_res, test_res = splitobs(shuffleobs(rest_res, rng=MersenneTwister(42)),
+  dev_res, test_res = splitobs(shuffleobs(rest_res, rng=MersenneTwister(seed)),
 		               at=0.02)
   
   isdir(outdir) || mkdir(outdir)
@@ -184,7 +187,7 @@ unlock_gpu(gpu) = rm("/home/sebastianstabinger/tmp/gpu_$(gpu).lock")
 
 # ╔═╡ 8e5fddff-33e8-4854-91d6-c8ee6895b3c5
 function run_experiment(;pattern=1, samples_per_aspect=3, nb_neg_samples=3, 
-		        pretrained_weight="albert-base-v2")
+		        pretrained_weight="albert-base-v2", seed=seed)
   ENV["PET_ELECTRA_ROOT"] = pwd()
   println("Trying to get GPU lock")
   gpu = get_gpu_lock() # Get a GPU lock
@@ -194,7 +197,7 @@ function run_experiment(;pattern=1, samples_per_aspect=3, nb_neg_samples=3,
   configfilename = joinpath("./config", datasetname*".json")
   # Generate datset
   println("Generating dataset")
-  generate_dataset("./hotels_topic.json", joinpath("./data", datasetname))
+  generate_dataset("./hotels_topic.json", joinpath("./data", datasetname), seed=seed, samples_per_aspect=samples_per_aspect)
   # Generate config
   println("Setting run options")
   set_run_options("./config/dosentencepairs_template.json", configfilename;
@@ -220,7 +223,8 @@ end
 run_experiment(pattern=args["pattern"],
 	       samples_per_aspect=args["samples_per_aspect"],
 	       nb_neg_samples=args["nb_neg_samples"],
-	       pretrained_weight=args["pretrained_weight"])
+	       pretrained_weight=args["pretrained_weight"],
+               seed=args["seed"])
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
