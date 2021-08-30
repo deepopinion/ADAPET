@@ -12,6 +12,7 @@ begin
   using NPZ
   using ArgParse
   using Crayons.Box
+  using NPZ
 end
 
 # ╔═╡ 190194c2-aea0-4053-85ed-b5d5d97632fb
@@ -69,6 +70,7 @@ function write_data(filename, data, nb_neg_samples)
       "label" => "Yes")
     push!(data_to_write, d)
     idx += 1
+    # Write the negative samples of this sentence
     for aspect in shuffle(setdiff(allaspects, [r["label"]]))[1:nb_neg_samples]
       d = Dict(
 	"idx" => idx,
@@ -115,19 +117,29 @@ function write_all_data(filename, data)
 end
 
 # ╔═╡ 354d0e38-ebf3-4069-921e-90588ff8e78e
-function generate_dataset(infilename, outdir;samples_per_aspect=3, nb_neg_samples=3, seed=42)
+function generate_dataset(infilename, outdir;samples_per_aspect=3, nb_neg_samples=3, seed=42, activelearningmetric=:entropy)
+  # Load data and pre-process
   js = JSON.parse(read(infilename, String))
   sentences, aspects, sentiments = js["sentences"], js["aspects"], js["sentiments"]
   aspects = [asp2asp[a] for a in aspects]
-  clean_sentences = [ replace(sent, "\n" => "")|>strip for sent in sentences]
+  clean_sentences = [replace(sent, "\n" => "") |> strip for sent in sentences]
   numdict(X) = Dict(x => i for (i,x) in enumerate(X|>unique|>sort))
   asp2num = numdict(aspects)
   sent2num = numdict(sentiments)
-  
+
+  # Bring sentence/label data in the correct form
   res = []
   for (i,(sentence, aspect)) in enumerate(zip(clean_sentences, aspects))
     push!(res, Dict("sentence" => sentence, "label" => aspect, "idx"=>i))
   end
+  
+  # If active learning data is available, sort the sentences by how unsure we are
+  if isfile("entropy_and_breaking_ties.npz")
+    npz = npzread("entropy_and_breaking_ties.npz")
+    metric = activelearningmetric == :entropy ? npz["entropies"] : npz["breaking_ties"]
+    sentences = sentences[sortperm(metric, rev=true)]
+  end
+  
   # Select a fixed number of samples of each aspect for the training set
   train_res = []
   rest_res = []
@@ -167,7 +179,7 @@ end
 
 function get_gpu_lock()
   while true
-    for gpu in 0:2
+    for gpu in 1:3
       gpu_file = "/home/sebastianstabinger/tmp/gpu_$(gpu).lock"
       if !isfile(gpu_file)
         touch(gpu_file)
