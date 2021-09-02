@@ -34,6 +34,9 @@ begin
     "--seed"
     arg_type = Int
     default = 42
+    "--use_active_learning"
+    arg_type = String
+    default = "no"
   end
   args = parse_args(ARGS, s)
 end
@@ -57,7 +60,7 @@ asp2asp = Dict(
 )
 
 # ╔═╡ faad7cdd-2811-46c4-9387-c6934b4e1359
-function write_data(filename, data, nb_neg_samples)
+function write_data(filename, data, nb_neg_samples; seed=42)
   allaspects = values(asp2asp)
   data_to_write = []
   
@@ -82,7 +85,7 @@ function write_data(filename, data, nb_neg_samples)
     end
   end
   
-  shuffle!(data_to_write)
+  shuffle!(MersenneTwister(seed), data_to_write)
   
   open(filename, "w") do IO
     for d in data_to_write
@@ -134,10 +137,14 @@ function generate_dataset(infilename, outdir;samples_per_aspect=3, nb_neg_sample
   end
   
   # If active learning data is available, sort the sentences by how unsure we are
-  if isfile("entropy_and_breaking_ties.npz")
+  if activelearningmetric != :no && isfile("entropy_and_breaking_ties.npz")
+    println("Using Active learning data")
     npz = npzread("entropy_and_breaking_ties.npz")
     metric = activelearningmetric == :entropy ? npz["entropies"] : npz["breaking_ties"]
     sentences = sentences[sortperm(metric, rev=true)]
+  else
+    # Shuffle data randomly
+    shuffle!(MersenneTwister(seed), res)
   end
   
   # Select a fixed number of samples of each aspect for the training set
@@ -158,8 +165,8 @@ function generate_dataset(infilename, outdir;samples_per_aspect=3, nb_neg_sample
   
   isdir(outdir) || mkdir(outdir)
   
-  write_data(joinpath(outdir, "train.jsonl"), train_res, nb_neg_samples)
-  write_data(joinpath(outdir, "dev.jsonl"), dev_res, 0)
+  write_data(joinpath(outdir, "train.jsonl"), train_res, nb_neg_samples, seed=seed)
+  write_data(joinpath(outdir, "dev.jsonl"), dev_res, 0, seed=seed)
   write_all_data(joinpath(outdir, "test.jsonl"), test_res[1:1000])
 end
 
@@ -195,11 +202,15 @@ function get_gpu_lock()
   end
 end
 
-unlock_gpu(gpu) = rm("/home/sebastianstabinger/tmp/gpu_$(gpu).lock")
+function unlock_gpu(gpu)
+  filename = "/home/sebastianstabinger/tmp/gpu_$(gpu).lock"
+  isfile(filename) && rm(filename)
+end
 
 # ╔═╡ 8e5fddff-33e8-4854-91d6-c8ee6895b3c5
 function run_experiment(;pattern=1, samples_per_aspect=3, nb_neg_samples=3, 
-		        pretrained_weight="albert-base-v2", seed=seed)
+		        pretrained_weight="albert-base-v2", seed=42,
+                        activelearningmetric="no")
   ENV["PET_ELECTRA_ROOT"] = pwd()
   println("Trying to get GPU lock")
   gpu = get_gpu_lock() # Get a GPU lock
@@ -209,7 +220,7 @@ function run_experiment(;pattern=1, samples_per_aspect=3, nb_neg_samples=3,
   configfilename = joinpath("./config", datasetname*".json")
   # Generate datset
   println("Generating dataset")
-  generate_dataset("./hotels_topic.json", joinpath("./data", datasetname), seed=seed, samples_per_aspect=samples_per_aspect)
+  generate_dataset("./hotels_topic.json", joinpath("./data", datasetname), seed=seed, samples_per_aspect=samples_per_aspect, activelearningmetric=activelearningmetric)
   # Generate config
   println("Setting run options")
   set_run_options("./config/dosentencepairs_template.json", configfilename;
@@ -236,7 +247,8 @@ run_experiment(pattern=args["pattern"],
 	       samples_per_aspect=args["samples_per_aspect"],
 	       nb_neg_samples=args["nb_neg_samples"],
 	       pretrained_weight=args["pretrained_weight"],
-               seed=args["seed"])
+               seed=args["seed"],
+               activelearningmetric=Symbol(args["use_active_learning"]))
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
