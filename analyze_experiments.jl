@@ -10,33 +10,63 @@ begin
 	using DataFrames
 	using Plots
 	using Query
+	using StatsBase
+	using PGFPlotsX
 end
 
 # ╔═╡ 910da7d9-0fba-4ba6-a6e0-df0ab3e68766
 df = DataFrame(CSV.File("adapet_experiments.csv"))
 
+# ╔═╡ 82b0cb10-c8a3-4073-abad-ea628243b636
+filtered_df = df |> 
+		@filter(_.pattern==1) |> 
+		@orderby_descending(_.samples_per_aspect) |> 
+		@groupby({_.pattern, _.samples_per_aspect}) |>
+		@map({samples_per_aspect=_.samples_per_aspect[1], 
+			accuracy=mean(_.accuracy),
+			min=minimum(_.accuracy),
+			max=maximum(_.accuracy),
+			count=length(_.accuracy)}) |>
+		DataFrame
+
 # ╔═╡ 1c380dce-8fc1-4351-a9f3-86d52dd25ef9
 function plt()
-	p = nothing
+	gr()
+	p = plot()
 	for pattern in 1:4
 		filtered_df = df |> 
 		@filter(_.pattern==pattern) |> 
 		@orderby_descending(_.samples_per_aspect) |> 
+		@groupby({_.pattern, _.samples_per_aspect}) |>
+		@map({samples_per_aspect=_.samples_per_aspect[1], 
+			accuracy=mean(_.accuracy),
+			min=minimum(_.accuracy),
+			max=maximum(_.accuracy)}) |>
 		DataFrame
-		if p == nothing
-			
-		p = plot(filtered_df.samples_per_aspect,
+		
+		p = plot!(p, filtered_df.samples_per_aspect,
 			filtered_df.accuracy,
+			#yerror=(filtered_df.accuracy.-filtered_df.min, filtered_df.max.-filtered_df.accuracy),
+			title="Performance of ADAPET, albert-base-v2",
 			xlab="Samples per Label",
 			ylab="Accuracy",
-			lab="Pattern $pattern")
-		else
-			plot!(p, filtered_df.samples_per_aspect,
-			filtered_df.accuracy,
-			xlab="Samples per Label",
-			ylab="Accuracy",
-			lab="Pattern $pattern")
-		end
+			lab="Pattern $pattern",
+			ylim=[0.2,0.7],
+			xticks=[1,2,3,6,15],
+			leg=:bottomright,
+			w=3, c=pattern)
+		
+		filtered_df_nogroup = df |> 
+		@filter(_.pattern==pattern) |> 
+		@orderby_descending(_.samples_per_aspect) |>
+		DataFrame
+		
+		#p = scatter!(p, filtered_df_nogroup.samples_per_aspect,
+		#	filtered_df_nogroup.accuracy,
+		#	lab=false,
+		#	leg=:bottomright,
+		#	w=1, m=:xcross, c=pattern)
+		
 	end
 	plot(p)
 end
@@ -44,22 +74,68 @@ end
 # ╔═╡ d822ab37-196d-4c4b-a159-251f512271a9
 plt()
 
-# ╔═╡ 18a5a1ce-801f-4ad0-aee0-95e8f76e953f
+# ╔═╡ 38d15c43-2455-4fe1-85f5-282da7231af8
+function grid_plt()
+	gr()
+	plots = []
+	for pattern in 1:4
+		filtered_df = df |> 
+		@filter(_.pattern==pattern) |> 
+		@orderby_descending(_.samples_per_aspect) |> 
+		@groupby({_.pattern, _.samples_per_aspect}) |>
+		@map({samples_per_aspect=_.samples_per_aspect[1], 
+			accuracy=mean(_.accuracy),
+			min=minimum(_.accuracy),
+			max=maximum(_.accuracy)}) |>
+		DataFrame
+		
+		p = plot(filtered_df.samples_per_aspect,
+			filtered_df.accuracy,
+			ribbon=(filtered_df.accuracy.-filtered_df.min, filtered_df.max.-filtered_df.accuracy),
+			title="Pattern $pattern",
+			xlab="Samples per Label",
+			ylab="Accuracy",
+			lab=false,
+			ylim=[0.1,0.7],
+			xticks=[1,2,3,6,15],
+			leg=false,
+			w=3, c=pattern)
+		
+		filtered_df_nogroup = df |> 
+		@filter(_.pattern==pattern) |> 
+		@orderby_descending(_.samples_per_aspect) |>
+		DataFrame
+		
+		p = scatter!(p, filtered_df_nogroup.samples_per_aspect,
+			filtered_df_nogroup.accuracy,
+			lab=false,
+			leg=:bottomright,
+			w=1, m=:xcross, c=pattern)
+		push!(plots, p)
+	end
+	plot(plots..., layout=4)
+end
 
+# ╔═╡ 16c28eb8-e7cc-4e5a-a64f-dee098eb5f91
+grid_plt()
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+PGFPlotsX = "8314cec4-20b6-5062-9cdb-752b83310925"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 Query = "1a8c2f83-1ff3-5112-b086-8aa67b057ba1"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
 CSV = "~0.8.5"
 DataFrames = "~1.2.2"
+PGFPlotsX = "~1.3.2"
 Plots = "~1.20.1"
 Query = "~1.0.0"
+StatsBase = "~0.33.9"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -71,6 +147,11 @@ deps = ["LinearAlgebra"]
 git-tree-sha1 = "84918055d15b3114ede17ac6a7182f68870c16f7"
 uuid = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 version = "3.3.1"
+
+[[ArgCheck]]
+git-tree-sha1 = "dedbbb2ddb876f899585c4ec4433265e3017215a"
+uuid = "dce04be8-c92d-5529-be00-80e4d2c0e197"
+version = "2.1.0"
 
 [[ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
@@ -170,6 +251,12 @@ version = "0.4.13"
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 
+[[DefaultApplication]]
+deps = ["InteractiveUtils"]
+git-tree-sha1 = "fc2b7122761b22c87fec8bf2ea4dc4563d9f8c24"
+uuid = "3f0dd361-4fe0-5fc6-8523-80b14ec94d85"
+version = "1.0.0"
+
 [[DelimitedFiles]]
 deps = ["Mmap"]
 uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
@@ -177,6 +264,12 @@ uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 [[Distributed]]
 deps = ["Random", "Serialization", "Sockets"]
 uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+
+[[DocStringExtensions]]
+deps = ["LibGit2"]
+git-tree-sha1 = "a32185f5428d3986f47c2ab78b1f216d5e6cc96f"
+uuid = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
+version = "0.8.5"
 
 [[Downloads]]
 deps = ["ArgTools", "LibCURL", "NetworkOptions"]
@@ -514,6 +607,18 @@ git-tree-sha1 = "b2a7af664e098055a7529ad1a900ded962bca488"
 uuid = "2f80f16e-611a-54ab-bc61-aa92de5b98fc"
 version = "8.44.0+0"
 
+[[PGFPlotsX]]
+deps = ["ArgCheck", "DataStructures", "Dates", "DefaultApplication", "DocStringExtensions", "MacroTools", "Parameters", "Requires", "Tables"]
+git-tree-sha1 = "9c70cfd9f33384c7e9560f2918c4ef716e4ce652"
+uuid = "8314cec4-20b6-5062-9cdb-752b83310925"
+version = "1.3.2"
+
+[[Parameters]]
+deps = ["OrderedCollections", "UnPack"]
+git-tree-sha1 = "2276ac65f1e236e0a6ea70baff3f62ad4c625345"
+uuid = "d96e819e-fc66-5662-9728-84c9c7592b0a"
+version = "0.12.2"
+
 [[Parsers]]
 deps = ["Dates"]
 git-tree-sha1 = "bfd7d8c7fd87f04543810d9cbd3995972236ba1b"
@@ -730,6 +835,11 @@ version = "1.3.0"
 [[UUIDs]]
 deps = ["Random", "SHA"]
 uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
+
+[[UnPack]]
+git-tree-sha1 = "387c1f73762231e86e0c9c5443ce3b4a0a9a0c2b"
+uuid = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
+version = "1.0.2"
 
 [[Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
@@ -948,8 +1058,10 @@ version = "0.9.1+5"
 # ╔═╡ Cell order:
 # ╠═0f2d186e-064c-11ec-2759-335dc3e24160
 # ╠═910da7d9-0fba-4ba6-a6e0-df0ab3e68766
+# ╠═82b0cb10-c8a3-4073-abad-ea628243b636
 # ╠═1c380dce-8fc1-4351-a9f3-86d52dd25ef9
 # ╠═d822ab37-196d-4c4b-a159-251f512271a9
-# ╠═18a5a1ce-801f-4ad0-aee0-95e8f76e953f
+# ╠═38d15c43-2455-4fe1-85f5-282da7231af8
+# ╠═16c28eb8-e7cc-4e5a-a64f-dee098eb5f91
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
