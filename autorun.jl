@@ -37,6 +37,15 @@ begin
     "--use_active_learning"
     arg_type = String
     default = "no"
+    "--active_learning_threshold"
+    arg_type = Float64
+    default = 100.0
+    "--act_shuffle"
+    arg_type = String
+    default = "false"
+    "--guided_sampling"
+    arg_type = String
+    default = "false"
   end
   args = parse_args(ARGS, s)
 end
@@ -120,7 +129,9 @@ function write_all_data(filename, data)
 end
 
 # ╔═╡ 354d0e38-ebf3-4069-921e-90588ff8e78e
-function generate_dataset(infilename, outdir;samples_per_aspect=3, nb_neg_samples=3, seed=42, activelearningmetric=:entropy)
+function generate_dataset(infilename, outdir;samples_per_aspect=3, nb_neg_samples=3, seed=42,
+                          activelearningmetric=:entropy, active_learning_threshold=nothing,
+                          act_shuffle=nothing, guided_sampling=nothing)
   # Load data and pre-process
   js = JSON.parse(read(infilename, String))
   sentences, aspects, sentiments = js["sentences"], js["aspects"], js["sentiments"]
@@ -141,23 +152,38 @@ function generate_dataset(infilename, outdir;samples_per_aspect=3, nb_neg_sample
     println("Using Active learning data")
     npz = npzread("entropy_and_breaking_ties.npz")
     metric = activelearningmetric == :entropy ? npz["entropies"] : npz["breaking_ties"]
+    # Filter sentences with a metric value above threshold. The idea
+    # here is that extremely uncertain sentences might just not be
+    # very useful
+    sentmet = filter(x->x[2]<active_learning_threshold, zip(sentences, metric)|>collect)
+    sentences = first.(sentmet)
+    metric = last.(sentmet)
+    # Sort sentences according to uncertainty
     sentences = sentences[sortperm(metric, rev=true)]
+    # Shuffle a certain amount of the most confusing sentences to bring in a bit more variability
+    act_shuffle && shuffle!(@view(sentences[1:100]))
   else
     # Shuffle data randomly
     shuffle!(MersenneTwister(seed), res)
   end
   
-  # Select a fixed number of samples of each aspect for the training set
-  train_res = []
-  rest_res = []
-  asp_count = Dict(asp => 0 for asp in values(asp2asp))
-  for r in res
-    if asp_count[r["label"]] < samples_per_aspect
-      push!(train_res, r)
-      asp_count[r["label"]] += 1
-    else
-      push!(rest_res, r)
+  if guided_sampling
+    # Select a fixed number of samples of each aspect for the training set
+    train_res = []
+    rest_res = []
+    asp_count = Dict(asp => 0 for asp in values(asp2asp))
+    for r in res
+      if asp_count[r["label"]] < samples_per_aspect
+        push!(train_res, r)
+        asp_count[r["label"]] += 1
+      else
+        push!(rest_res, r)
+      end
     end
+  else # If we are not doing guided sampling, randomly select (this is more realistic in practice)
+    shuffle!(res)
+    train_res = res[1:samples_per_aspect]
+    rest_res = res[samples_per_aspect+1:end]
   end
   # Split off dev and test set
   dev_res, test_res = splitobs(shuffleobs(rest_res, rng=MersenneTwister(seed)),
@@ -186,7 +212,7 @@ end
 
 function get_gpu_lock()
   while true
-    for gpu in 1:3
+    for gpu in 2:3
       gpu_file = "/home/sebastianstabinger/tmp/gpu_$(gpu).lock"
       if !isfile(gpu_file)
         touch(gpu_file)
@@ -210,7 +236,10 @@ end
 # ╔═╡ 8e5fddff-33e8-4854-91d6-c8ee6895b3c5
 function run_experiment(;pattern=1, samples_per_aspect=3, nb_neg_samples=3, 
 		        pretrained_weight="albert-base-v2", seed=42,
-                        activelearningmetric="no")
+                        activelearningmetric=:no, active_learning_threshold=nothing,
+                        act_shuffle=nothing, guided_sampling=nothing)
+  @assert activelearningmetric ∈ [:no, :entropy, :breaking_ties] "Active learning method unknown"
+  
   ENV["PET_ELECTRA_ROOT"] = pwd()
   println("Trying to get GPU lock")
   gpu = get_gpu_lock() # Get a GPU lock
@@ -220,7 +249,10 @@ function run_experiment(;pattern=1, samples_per_aspect=3, nb_neg_samples=3,
   configfilename = joinpath("./config", datasetname*".json")
   # Generate datset
   println("Generating dataset")
-  generate_dataset("./hotels_topic.json", joinpath("./data", datasetname), seed=seed, samples_per_aspect=samples_per_aspect, activelearningmetric=activelearningmetric)
+  generate_dataset("./hotels_topic.json", joinpath("./data", datasetname), seed=seed,
+                   samples_per_aspect=samples_per_aspect, activelearningmetric=activelearningmetric,
+                   active_learning_threshold=active_learning_threshold, act_shuffle=act_shuffle,
+                   guided_sampling=guided_sampling)
   # Generate config
   println("Setting run options")
   set_run_options("./config/dosentencepairs_template.json", configfilename;
@@ -248,7 +280,10 @@ run_experiment(pattern=args["pattern"],
 	       nb_neg_samples=args["nb_neg_samples"],
 	       pretrained_weight=args["pretrained_weight"],
                seed=args["seed"],
-               activelearningmetric=Symbol(args["use_active_learning"]))
+               activelearningmetric=Symbol(args["use_active_learning"]),
+               active_learning_threshold=args["active_learning_threshold"],
+               act_shuffle=parse(Bool, args["act_shuffle"]),
+               act_shuffle=parse(Bool, args["guided_sampling"]))
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
