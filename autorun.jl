@@ -181,7 +181,6 @@ function generate_dataset(infilename, outdir;samples_per_aspect=3, nb_neg_sample
       end
     end
   else # If we are not doing guided sampling, randomly select (this is more realistic in practice)
-    shuffle!(res)
     train_res = res[1:samples_per_aspect]
     rest_res = res[samples_per_aspect+1:end]
   end
@@ -283,7 +282,8 @@ run_experiment(pattern=args["pattern"],
                activelearningmetric=Symbol(args["use_active_learning"]),
                active_learning_threshold=args["active_learning_threshold"],
                act_shuffle=parse(Bool, args["act_shuffle"]),
-               act_shuffle=parse(Bool, args["guided_sampling"]))
+               guided_sampling=parse(Bool, args["guided_sampling"]),
+               )
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
