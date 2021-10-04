@@ -161,7 +161,8 @@ function generate_dataset(infilename, outdir;samples_per_aspect=3, nb_neg_sample
     # Sort sentences according to uncertainty
     sentences = sentences[sortperm(metric, rev=true)]
     # Shuffle a certain amount of the most confusing sentences to bring in a bit more variability
-    act_shuffle && shuffle!(@view(sentences[1:100]))
+    num_shuffle = guided_sampling ? 100 : samples_per_aspect*2
+    act_shuffle && shuffle!(@view(sentences[1:num_shuffle]))
   else
     # Shuffle data randomly
     shuffle!(MersenneTwister(seed), res)
@@ -211,7 +212,7 @@ end
 
 function get_gpu_lock()
   while true
-    for gpu in 2:3
+    for gpu in 1:3
       gpu_file = "/home/sebastianstabinger/tmp/gpu_$(gpu).lock"
       if !isfile(gpu_file)
         touch(gpu_file)
