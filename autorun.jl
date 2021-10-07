@@ -13,6 +13,7 @@ begin
   using ArgParse
   using Crayons.Box
   using NPZ
+  using StatsBase
 end
 
 # ╔═╡ 190194c2-aea0-4053-85ed-b5d5d97632fb
@@ -208,6 +209,10 @@ function evaluate(resultdir, testfilename)
   trueaspects = getaspectnr.(Iterators.partition(testjs, 25))
   # Calculate accuracy
   sum(modelasepcts .== trueaspects)/length(modelasepcts)
+  # Calculate and save the entropies
+  entropyfilename = "fewshot_entropy_and_breaking_ties.npz"
+  entropies = entropy.(eachrow(logits))
+  npzwrite(entropyfilename, entropies)
 end
 
 function get_gpu_lock()
