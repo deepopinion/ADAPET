@@ -14,6 +14,7 @@ begin
   using Crayons.Box
   using NPZ
   using StatsBase
+  using Dates
 end
 
 # ╔═╡ 190194c2-aea0-4053-85ed-b5d5d97632fb
@@ -47,6 +48,9 @@ begin
     "--guided_sampling"
     arg_type = String
     default = "false"
+    "--nbsteps"
+    arg_type = Int
+    default = 1
   end
   args = parse_args(ARGS, s)
 end
@@ -130,6 +134,45 @@ function write_all_data(filename, data)
 end
 
 # ╔═╡ 354d0e38-ebf3-4069-921e-90588ff8e78e
+"""Create backup of a file using a timestamp in the name"""
+function backup(filename)
+  timestamp = string(now())
+  cp(filename, filename*"_$timestamp")
+end
+
+"""Write a string array to a file"""
+function writelines(filename, lines)
+  open(filename, "w") do io
+    for line in lines
+      println(io, line)
+    end
+  end
+end
+
+"""Transfers samples from one jsonl to another jsonl"""
+function transfer_samples(test_filename, train_filename, idxs)
+  backup(test_filename)
+  backup(train_filename)
+  
+  test = readlines(test_filename)
+  train = readlines(train_filename)
+
+  new_test = []
+  for (i, line) in enumerate(test)
+    if i in idxs
+      push!(train, line)
+    else
+      push!(new_test, line)
+    end
+  end
+
+  shuffle!(train)               # Not sure this is necessary, but might be a good idea
+  
+  writelines(test_filename, new_test)
+  writelines(train_filename, train)
+end
+
+
 function generate_dataset(infilename, outdir;samples_per_aspect=3, nb_neg_samples=3, seed=42,
                           activelearningmetric=:entropy, active_learning_threshold=nothing,
                           act_shuffle=nothing, guided_sampling=nothing)
@@ -194,7 +237,7 @@ function generate_dataset(infilename, outdir;samples_per_aspect=3, nb_neg_sample
   
   write_data(joinpath(outdir, "train.jsonl"), train_res, nb_neg_samples, seed=seed)
   write_data(joinpath(outdir, "dev.jsonl"), dev_res, 0, seed=seed)
-  write_all_data(joinpath(outdir, "test.jsonl"), test_res[1:1000])
+  write_all_data(joinpath(outdir, "test.jsonl"), test_res)
 end
 
 # ╔═╡ b4587bec-c0fd-474f-9eb7-1a795c203452
@@ -208,11 +251,10 @@ function evaluate(resultdir, testfilename)
   getaspectnr(partition) = findfirst(x->x["label"]=="Yes", partition)
   trueaspects = getaspectnr.(Iterators.partition(testjs, 25))
   # Calculate accuracy
-  sum(modelasepcts .== trueaspects)/length(modelasepcts)
-  # Calculate and save the entropies
-  entropyfilename = "fewshot_entropy_and_breaking_ties.npz"
+  accuracy = sum(modelasepcts .== trueaspects)/length(modelasepcts)
   entropies = entropy.(eachrow(logits))
-  npzwrite(entropyfilename, entropies)
+
+  return accuracy, entropies
 end
 
 function get_gpu_lock()
@@ -242,7 +284,7 @@ end
 function run_experiment(;pattern=1, samples_per_aspect=3, nb_neg_samples=3, 
 		        pretrained_weight="albert-base-v2", seed=42,
                         activelearningmetric=:no, active_learning_threshold=nothing,
-                        act_shuffle=nothing, guided_sampling=nothing)
+                        act_shuffle=nothing, guided_sampling=nothing, nbsteps=nothing)
   @assert activelearningmetric ∈ [:no, :entropy, :breaking_ties] "Active learning method unknown"
   
   ENV["PET_ELECTRA_ROOT"] = pwd()
@@ -263,18 +305,27 @@ function run_experiment(;pattern=1, samples_per_aspect=3, nb_neg_samples=3,
   set_run_options("./config/dosentencepairs_template.json", configfilename;
 		  pattern=pattern, dataset=datasetname,
                   pretrained_weight=pretrained_weight)
-  # Run training
-  println("Starting training")
-  run(`python -m src.train -c $configfilename`)
-  # Determine dir of generated data
-  resultbasedir = joinpath("./exp_out/", datasetname, pretrained_weight)
-  resultdir = sort(readdir(resultbasedir, join=true))[end]
-  # Run test
-  run(`python -m src.test -e $resultdir`)
-  # Evaluate results
-  accuracy = evaluate(resultdir, joinpath("./data", datasetname, "test.jsonl"))
-  println("accuracy: $accuracy")
 
+  # Run training n times (first time will be from Zero-Shot, rest should be from Few-Shot Few-Shot)
+  println("Starting training")
+  for step in 1:nbsteps
+    println("step: $(step*samples_per_aspect)")
+    run(`python -m src.train -c $configfilename`)
+    # Determine dir of generated data
+    resultbasedir = joinpath("./exp_out/", datasetname, pretrained_weight)
+    resultdir = sort(readdir(resultbasedir, join=true))[end]
+    # Run test
+    run(`python -m src.test -e $resultdir`)
+    # Evaluate results
+    test_filename = joinpath("./data", datasetname, "test.jsonl")
+    accuracy, entropies = evaluate(resultdir, test_filename)
+    println("accuracy: $accuracy")
+    # Transfer highest entropy samples to training set
+    order = sortperm(entropies, rev=True)
+    idxs = order[1:samples_per_aspect]
+    train_filename = joinpath("./data", datasetname, "train.jsonl")
+    transfer_samples(test_filename, train_filename, idxs)
+  end
   # Unlock GPU
   unlock_gpu(gpu)
 end
@@ -289,6 +340,7 @@ run_experiment(pattern=args["pattern"],
                active_learning_threshold=args["active_learning_threshold"],
                act_shuffle=parse(Bool, args["act_shuffle"]),
                guided_sampling=parse(Bool, args["guided_sampling"]),
+               nbsteps=args["nbsteps"],
                )
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
