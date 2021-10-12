@@ -97,7 +97,7 @@ def test_eval(config, model, batcher):
     all_logits = []
 
     with torch.no_grad():
-        for idx, batch in enumerate(tqdm(batcher.get_test_batch())):
+        for idx, batch in enumerate(batcher.get_test_batch()):
             pred_lbl, lbl_logits = model.predict(batch)
             list_idx = batch["input"]["idx"] if isinstance(batch["input"]["idx"], list) else batch["input"][
                 "idx"].cpu().numpy().tolist()
