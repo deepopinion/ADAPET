@@ -1,13 +1,40 @@
-sentencepair:
+sentencepair_entropy:
   description: Executes a set of experiments with ADAPET and sentencepair data
   exec: julia ./autorun.jl ${flag_args}
   flags:
-    pattern: [1, 2, 3, 4]
-    samples_per_aspect: [1,2,3,4,5,7,10,15]
-    nb_neg_samples: 3
-    pretrained_weight: albert-xxlarge-v2
+    pattern: 4
+    samples_per_aspect: 50
+    nb_neg_samples: 10
+    pretrained_weight: albert-base-v2
+    seed: [43, 44, 45, 46, 47]
+    use_active_learning: ["entropy"]
+    active_learning_threshold: 100
+    act_shuffle: "true"
+    guided_sampling: "false"
+    nbsteps: 10 
   sourcecode:
     select: "*"
     dest: .
   output-scalars:
-    accuracy: 'accuracy: (\value)'
+    step: 'step: (\step)'
+    accuracy: 'final_accuracy: (\value)'
+sentencepair_no:
+  description: Executes a set of experiments with ADAPET and sentencepair data
+  exec: julia ./autorun.jl ${flag_args}
+  flags:
+    pattern: 4
+    samples_per_aspect: [150, 200, 250, 300, 350, 400, 450, 500]
+    nb_neg_samples: 10
+    pretrained_weight: albert-base-v2
+    seed: [43, 44, 45, 46, 47]
+    use_active_learning: ["no"]
+    active_learning_threshold: 100
+    act_shuffle: "true"
+    guided_sampling: "false"
+    nbsteps: 1
+  sourcecode:
+    select: "*"
+    dest: .
+  output-scalars:
+    step: 'step: (\step)'
+    accuracy: 'final_accuracy: (\value)'

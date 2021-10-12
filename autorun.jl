@@ -319,7 +319,7 @@ function run_experiment(;pattern=1, samples_per_aspect=3, nb_neg_samples=3,
     # Evaluate results
     test_filename = joinpath("./data", datasetname, "test.jsonl")
     accuracy, entropies = evaluate(resultdir, test_filename)
-    println("accuracy: $accuracy")
+    println("final_accuracy: $accuracy")
     # Transfer highest entropy samples to training set
     order = sortperm(entropies, rev=true)
     idxs = order[1:samples_per_aspect]
